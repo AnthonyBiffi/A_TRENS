@@ -23,58 +23,47 @@ const AppState = {
 const SCREEN_META = {
   'screen-tela1': {
     title: 'Início - Pesquisa de Satisfação',
-    step: 'Etapa 1 de 7',
     subtitle: 'Pesquisa rápida para entender a experiência dos passageiros.'
   },
   'screen-login': {
     title: 'Cadastro - Pesquisa de Satisfação',
-    step: 'Etapa 2 de 7',
     subtitle: 'Informe seus dados para iniciar o registro da avaliação.'
   },
   'screen-local': {
     title: 'Local - Pesquisa de Satisfação',
-    step: 'Etapa 3 de 7',
     subtitle: 'Selecione o transporte, a linha e a estação utilizada.'
   },
   'screen-intervalo': {
     title: 'Intervalo médio - Pesquisa de Satisfação',
-    step: 'Etapa 4 de 7',
     subtitle: 'Informe em minutos quanto tempo o transporte demora para passar.'
   },
   'screen-data': {
     title: 'Data e hora - Pesquisa de Satisfação',
-    step: 'Etapa 5 de 7',
     subtitle: 'Informe quando a viagem aconteceu.'
   },
   'screen-avaliacao': {
     title: 'Avaliação - Pesquisa de Satisfação',
-    step: 'Etapa 6 de 7',
     subtitle: 'Dê notas de 0 a 5 para os principais pontos da experiência.'
   },
   'screen-finalizacao': {
     title: 'Finalização - Pesquisa de Satisfação',
-    step: 'Etapa 7 de 7',
     subtitle: 'Deixe um comentário opcional e conclua a pesquisa.'
   },
   'screen-consulta': {
-    title: 'Consulta rápida - Intervalo do trem',
-    step: 'Consulta rápida',
-    subtitle: 'Veja a média de intervalo dos trens com base nas avaliações registradas.'
+    title: 'Consulta rápida de transporte',
+    subtitle: 'Veja a média de intervalo de metrô e trem com base nos relatos dos passageiros.'
   },
   'screen-admin-login': {
     title: 'Login administrador',
-    step: 'Administrador',
     subtitle: 'Acesso restrito para exportar o dashboard das avaliações.'
   },
   'screen-admin-dashboard': {
     title: 'Admin - Dashboard',
-    step: 'Dashboard administrativo',
     subtitle: 'Área restrita para visualizar dados consolidados e exportar para Excel.'
   }
 };
 
 const SCREEN_PROGRESS = {
-  'screen-tela1': 1,
   'screen-login': 2,
   'screen-local': 3,
   'screen-intervalo': 4,
@@ -172,6 +161,7 @@ async function carregarTransportData() {
     .join('');
 
   atualizarLinhas();
+  atualizarOpcoesLinhaConsulta();
 }
 
 function atualizarLinhas() {
@@ -204,8 +194,32 @@ document.getElementById('btn-abrir-admin-login').addEventListener('click', () =>
 // Tela Login (Nome + CPF somente números, 11 dígitos)
 const cpfInput = document.getElementById('input-cpf');
 cpfInput.addEventListener('input', () => {
-  cpfInput.value = cpfInput.value.replace(/\D/g, '').slice(0, 11);
+  const digitos = cpfInput.value.replace(/\D/g, '').slice(0, 11);
+  cpfInput.value = digitos
+    .replace(/^(\d{3})(\d)/, '$1.$2')
+    .replace(/^(\d{3}\.\d{3})(\d)/, '$1.$2')
+    .replace(/^(\d{3}\.\d{3}\.\d{3})(\d{1,2})$/, '$1-$2');
 });
+
+function validarCpf(cpf) {
+  const digitos = String(cpf).replace(/\D/g, '');
+  if (digitos.length !== 11 || /^(\d)\1{10}$/.test(digitos)) {
+    return false;
+  }
+
+  const calcularDigito = (base, pesoInicial) => {
+    const soma = base
+      .split('')
+      .reduce((total, digito, indice) => total + Number(digito) * (pesoInicial - indice), 0);
+    const resto = (soma * 10) % 11;
+    return resto === 10 ? 0 : resto;
+  };
+
+  return (
+    calcularDigito(digitos.slice(0, 9), 10) === Number(digitos[9]) &&
+    calcularDigito(digitos.slice(0, 10), 11) === Number(digitos[10])
+  );
+}
 
 document.getElementById('btn-login-continuar').addEventListener('click', () => {
   const nome = document.getElementById('input-nome').value.trim();
@@ -215,13 +229,13 @@ document.getElementById('btn-login-continuar').addEventListener('click', () => {
     showDialog('Informe um nome válido.');
     return;
   }
-  if (cpf.length !== 11) {
-    showDialog('Informe um CPF com 11 números.');
+  if (!validarCpf(cpf)) {
+    showDialog('Confira o CPF informado. Verifique os 11 dígitos.');
     return;
   }
 
   AppState.nome = nome;
-  AppState.cpf = cpf;
+  AppState.cpf = cpf.replace(/\D/g, '');
   goToScreen('screen-local');
 });
 
@@ -300,6 +314,19 @@ function prepararTelaData() {
   }
 }
 
+function preencherDataHoraRelativa(minutosAtras) {
+  const viagem = new Date(Date.now() - minutosAtras * 60 * 1000);
+  const pad = (valor) => String(valor).padStart(2, '0');
+  document.getElementById('input-data').value =
+    `${pad(viagem.getDate())}/${pad(viagem.getMonth() + 1)}/${viagem.getFullYear()}`;
+  document.getElementById('input-hora').value =
+    `${pad(viagem.getHours())}:${pad(viagem.getMinutes())}`;
+}
+
+document.getElementById('btn-data-agora').addEventListener('click', () => preencherDataHoraRelativa(0));
+document.getElementById('btn-data-15-min').addEventListener('click', () => preencherDataHoraRelativa(15));
+document.getElementById('btn-data-30-min').addEventListener('click', () => preencherDataHoraRelativa(30));
+
 document.getElementById('btn-data-continuar').addEventListener('click', () => {
   const data = document.getElementById('input-data').value.trim();
   const hora = document.getElementById('input-hora').value.trim();
@@ -359,19 +386,32 @@ function prepararTelaFinalizacao() {
   const v = (val) => (!val || !String(val).trim() ? '-' : val);
   const intervaloTxt =
     AppState.intervaloMedioMinutos > 0 ? `${AppState.intervaloMedioMinutos} minutos` : '-';
+  const itens = [
+    ['Nome', v(AppState.nome)],
+    ['Transporte', v(AppState.tipoTransporte)],
+    ['Linha', v(AppState.linha)],
+    ['Estação', v(AppState.estacao)],
+    ['Intervalo', intervaloTxt],
+    ['Data/Hora', `${v(AppState.data)} ${v(AppState.hora)}`],
+    ['Espera', `${AppState.espera}/5`],
+    ['Lotação', `${AppState.lotacao}/5`],
+    ['Qualidade', `${AppState.qualidade}/5`]
+  ];
 
-  document.getElementById('resumo-avaliacao').value = [
-    'Resumo da avaliação',
-    `Nome: ${v(AppState.nome)}`,
-    `Transporte: ${v(AppState.tipoTransporte)}`,
-    `Linha: ${v(AppState.linha)}`,
-    `Estação: ${v(AppState.estacao)}`,
-    `Intervalo médio estimado: ${intervaloTxt}`,
-    `Data/Hora: ${v(AppState.data)} ${v(AppState.hora)}`,
-    `Tempo de espera: ${AppState.espera}/5`,
-    `Lotação: ${AppState.lotacao}/5`,
-    `Qualidade geral: ${AppState.qualidade}/5`
-  ].join('\n');
+  document.getElementById('resumo-avaliacao').replaceChildren(
+    ...itens.map(([rotulo, valor]) => {
+      const item = document.createElement('div');
+      item.className = 'review-item';
+      const label = document.createElement('span');
+      label.className = 'review-label';
+      label.textContent = rotulo;
+      const value = document.createElement('strong');
+      value.className = 'review-value';
+      value.textContent = valor;
+      item.append(label, value);
+      return item;
+    })
+  );
 }
 
 function limparEstado() {
@@ -439,28 +479,61 @@ document.getElementById('btn-concluir').addEventListener('click', async () => {
   }
 });
 
-// Consulta rápida do trem (Telaconsulta.java)
+// Consulta rápida de transporte (Telaconsulta.java)
 function formatarBrDecimal(valor) {
   return Number(valor || 0).toFixed(1).replace('.', ',');
 }
 
+let consultaRequestId = 0;
+
+function atualizarOpcoesLinhaConsulta() {
+  const tipo = document.getElementById('select-consulta-tipo').value;
+  const linhasDisponiveis = AppState.transportData.linhasPorTipo;
+  const linhas = tipo
+    ? (linhasDisponiveis[tipo] || [])
+    : Object.values(linhasDisponiveis).flat();
+  const selectLinha = document.getElementById('select-consulta-linha');
+  const linhaSelecionada = selectLinha.value;
+  const opcoes = [...new Set(linhas)];
+
+  selectLinha.innerHTML = [
+    '<option value="">Todas</option>',
+    ...opcoes.map((linha) => `<option value="${linha}">${linha}</option>`)
+  ].join('');
+  selectLinha.value = opcoes.includes(linhaSelecionada) ? linhaSelecionada : '';
+}
+
+document.getElementById('select-consulta-tipo').addEventListener('change', () => {
+  atualizarOpcoesLinhaConsulta();
+  carregarConsultaTrem();
+});
+document.getElementById('select-consulta-linha').addEventListener('change', carregarConsultaTrem);
+
 async function carregarConsultaTrem() {
   const resumoEl = document.getElementById('consulta-resumo');
   const tbody = document.getElementById('tbody-consulta');
+  const requestId = ++consultaRequestId;
+  const params = new URLSearchParams();
+  const tipoTransporte = document.getElementById('select-consulta-tipo').value;
+  const linha = document.getElementById('select-consulta-linha').value;
+  if (tipoTransporte) params.set('tipoTransporte', tipoTransporte);
+  if (linha) params.set('linha', linha);
+
   resumoEl.textContent = 'Carregando dados...';
   tbody.innerHTML = '';
 
   try {
-    const res = await fetch('/api/consulta-trem');
+    const query = params.toString();
+    const res = await fetch(`/api/consulta-trem${query ? `?${query}` : ''}`);
     const json = await res.json();
+    if (requestId !== consultaRequestId) return;
     if (!res.ok) {
       throw new Error(json.erro || 'Erro na consulta.');
     }
     const dados = json.dados || [];
 
     if (!dados.length) {
-      resumoEl.textContent =
-        'Nenhuma avaliação de trem encontrada no banco. Faça pelo menos uma avaliação de Trem e salve antes de consultar.';
+      resumoEl.textContent = 'Nenhum relato encontrado para os filtros selecionados.';
       return;
     }
 
@@ -484,8 +557,11 @@ async function carregarConsultaTrem() {
     }
 
     const mediaGeral = somaPonderada / totalAvaliacoes;
-    resumoEl.textContent = `Média geral dos dados encontrados: ${formatarBrDecimal(mediaGeral)} minutos | Avaliações usadas: ${totalAvaliacoes}`;
+    const periodo = json.escopo === 'ultima_hora' ? 'última hora' : 'histórico disponível';
+    resumoEl.textContent =
+      `Média geral: ${formatarBrDecimal(mediaGeral)} min · ${totalAvaliacoes} relatos · ${periodo}`;
   } catch (err) {
+    if (requestId !== consultaRequestId) return;
     resumoEl.textContent = 'Erro ao consultar o banco.';
     showDialog(`Não foi possível consultar o banco de dados.\n\nErro técnico: ${err.message}`, 'Erro na consulta');
   }
@@ -498,21 +574,27 @@ async function validarLoginAdmin() {
   const email = document.getElementById('input-admin-email').value.trim();
   const senha = document.getElementById('input-admin-senha').value;
 
-  const res = await fetch('/api/admin/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, senha })
-  });
+  try {
+    const res = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, senha })
+    });
+    const json = await res.json();
 
-  if (res.ok) {
+    if (res.ok && json.token) {
+      sessionStorage.setItem('a3-admin-token', json.token);
+      document.getElementById('input-admin-senha').value = '';
+      goToScreen('screen-admin-dashboard');
+      return;
+    }
+
+    showDialog(json.erro || 'Email ou senha de administrador inválidos.', 'Acesso negado');
     document.getElementById('input-admin-senha').value = '';
-    goToScreen('screen-admin-dashboard');
-    return;
+    document.getElementById('input-admin-senha').focus();
+  } catch (err) {
+    showDialog(`Não foi possível autenticar o administrador.\n\nErro técnico: ${err.message}`, 'Falha no acesso');
   }
-
-  showDialog('Email ou senha de administrador inválidos.', 'Acesso negado');
-  document.getElementById('input-admin-senha').value = '';
-  document.getElementById('input-admin-senha').focus();
 }
 
 document.getElementById('btn-admin-entrar').addEventListener('click', validarLoginAdmin);
@@ -521,19 +603,89 @@ document.getElementById('input-admin-senha').addEventListener('keydown', (e) => 
 });
 
 // Dashboard Admin (Telaadmin.java + ExportadorDashboard.java)
+function atualizarKpisDashboard(dados) {
+  const totalAvaliacoes = dados.reduce(
+    (total, item) => total + Number(item.quantidadeAvaliacoes || 0),
+    0
+  );
+  const somaNotas = dados.reduce((total, item) => {
+    const quantidade = Number(item.quantidadeAvaliacoes || 0);
+    return total + quantidade * (
+      Number(item.mediaEspera || 0) +
+      Number(item.mediaLotacao || 0) +
+      Number(item.mediaQualidade || 0)
+    );
+  }, 0);
+  const totalIntervalos = dados.reduce((total, item) => {
+    const quantidade = Number.isFinite(Number(item.quantidadeIntervalos))
+      ? Number(item.quantidadeIntervalos)
+      : Number(item.quantidadeAvaliacoes || 0);
+    return total + quantidade;
+  }, 0);
+  const somaIntervalos = dados.reduce((total, item) => {
+    const quantidade = Number.isFinite(Number(item.quantidadeIntervalos))
+      ? Number(item.quantidadeIntervalos)
+      : Number(item.quantidadeAvaliacoes || 0);
+    return total + Number(item.mediaIntervalo || 0) * quantidade;
+  }, 0);
+
+  document.getElementById('kpi-total').textContent = String(totalAvaliacoes);
+  document.getElementById('kpi-nota').textContent = totalAvaliacoes
+    ? formatarBrDecimal(somaNotas / (3 * totalAvaliacoes))
+    : '—';
+  document.getElementById('kpi-espera').textContent = totalIntervalos
+    ? formatarBrDecimal(somaIntervalos / totalIntervalos)
+    : '—';
+
+  const linhasCriticas = dados.filter((item) => Number(item.quantidadeAvaliacoes) > 0);
+  const linhaCritica = [...linhasCriticas].sort((a, b) => {
+    const notaA = (Number(a.mediaEspera) + Number(a.mediaLotacao) + Number(a.mediaQualidade)) / 3;
+    const notaB = (Number(b.mediaEspera) + Number(b.mediaLotacao) + Number(b.mediaQualidade)) / 3;
+    return notaA - notaB || Number(b.mediaIntervalo) - Number(a.mediaIntervalo);
+  })[0];
+
+  document.getElementById('kpi-linha-critica').textContent = linhaCritica
+    ? `${linhaCritica.tipoTransporte} · ${linhaCritica.linha}`
+    : '—';
+  document.getElementById('kpi-linha-detalhe').textContent = linhaCritica
+    ? `Nota média ${
+        formatarBrDecimal(
+          (Number(linhaCritica.mediaEspera) +
+            Number(linhaCritica.mediaLotacao) +
+            Number(linhaCritica.mediaQualidade)) / 3
+        )
+      } · espera ${formatarBrDecimal(linhaCritica.mediaIntervalo)} min`
+    : 'Sem dados para calcular';
+}
+
 async function carregarDashboardAdmin() {
   const resumoEl = document.getElementById('admin-resumo');
   const tbody = document.getElementById('tbody-admin');
   resumoEl.textContent = 'Carregando dados...';
   tbody.innerHTML = '';
+  const token = sessionStorage.getItem('a3-admin-token');
+  if (!token) {
+    goToScreen('screen-admin-login');
+    showDialog('Entre novamente para acessar o dashboard.', 'Sessão encerrada');
+    return;
+  }
 
   try {
-    const res = await fetch('/api/admin/dashboard');
+    const res = await fetch('/api/admin/dashboard', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     const json = await res.json();
+    if (res.status === 401) {
+      sessionStorage.removeItem('a3-admin-token');
+      goToScreen('screen-admin-login');
+      showDialog('Sua sessão administrativa expirou. Entre novamente.', 'Sessão encerrada');
+      return;
+    }
     if (!res.ok) {
       throw new Error(json.erro || 'Erro no dashboard.');
     }
     const dados = json.dados || [];
+    atualizarKpisDashboard(dados);
 
     if (!dados.length) {
       resumoEl.textContent = 'Nenhuma avaliação encontrada no banco.';
@@ -564,11 +716,63 @@ async function carregarDashboardAdmin() {
   }
 }
 
-document.getElementById('btn-admin-sair').addEventListener('click', () => goToScreen('screen-tela1'));
-document.getElementById('btn-admin-atualizar').addEventListener('click', carregarDashboardAdmin);
-document.getElementById('btn-admin-exportar').addEventListener('click', () => {
-  window.location.href = '/api/admin/exportar-csv';
+async function exportarDashboardAdmin() {
+  const token = sessionStorage.getItem('a3-admin-token');
+  if (!token) {
+    goToScreen('screen-admin-login');
+    showDialog('Entre novamente para exportar o dashboard.', 'Sessão encerrada');
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/admin/exportar-csv?token=${encodeURIComponent(token)}`);
+    if (res.status === 401) {
+      sessionStorage.removeItem('a3-admin-token');
+      goToScreen('screen-admin-login');
+      showDialog('Sua sessão administrativa expirou. Entre novamente.', 'Sessão encerrada');
+      return;
+    }
+    if (!res.ok) {
+      const json = await res.json();
+      throw new Error(json.erro || 'Não foi possível exportar o dashboard.');
+    }
+
+    const arquivo = await res.blob();
+    const url = URL.createObjectURL(arquivo);
+    const link = document.createElement('a');
+    const disposicao = res.headers.get('Content-Disposition') || '';
+    const nomeArquivo = disposicao.match(/filename="([^"]+)"/i)?.[1] || 'dashboard-avaliacoes.csv';
+    link.href = url;
+    link.download = nomeArquivo;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (err) {
+    showDialog(`Não foi possível exportar o dashboard.\n\nErro técnico: ${err.message}`, 'Falha na exportação');
+  }
+}
+
+document.getElementById('btn-admin-sair').addEventListener('click', async () => {
+  const token = sessionStorage.getItem('a3-admin-token');
+  sessionStorage.removeItem('a3-admin-token');
+  goToScreen('screen-tela1');
+  if (!token) return;
+
+  try {
+    const res = await fetch('/api/admin/logout', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok && res.status !== 401) {
+      throw new Error('Não foi possível encerrar a sessão no servidor.');
+    }
+  } catch (err) {
+    showDialog(`A sessão foi encerrada neste navegador, mas não foi possível revogá-la no servidor.\n\n${err.message}`, 'Falha ao sair');
+  }
 });
+document.getElementById('btn-admin-atualizar').addEventListener('click', carregarDashboardAdmin);
+document.getElementById('btn-admin-exportar').addEventListener('click', exportarDashboardAdmin);
 
 // Boot
 carregarTransportData();

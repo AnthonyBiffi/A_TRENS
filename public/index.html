@@ -35,6 +35,7 @@
         <div
           id="header-progress"
           class="progress-panel"
+          hidden
           role="group"
           aria-label="Progresso da avaliação"
         >
@@ -83,22 +84,16 @@
             Iniciar avaliação
           </button>
           <button id="btn-abrir-consulta" type="button" class="btn btn-secondary">
-            Consulta rápida do trem
-          </button>
-          <button id="btn-abrir-admin-login" type="button" class="btn btn-secondary">
-            Área do administrador
+            Consulta rápida de transporte
           </button>
         </div>
-        <p class="muted-note text-center">
-          A área do administrador é bloqueada para usuários.
-        </p>
       </section>
 
       <!-- ETAPA 2: Telalogin.java -->
       <section id="screen-login" class="screen">
         <h2 class="screen-title">Dados do passageiro</h2>
         <p class="screen-subtitle">
-          Preencha nome e CPF. O CPF aceita somente números.
+          Preencha seu nome e CPF para registrar a experiência da viagem.
         </p>
 
         <div class="form-grid">
@@ -116,11 +111,15 @@
             id="input-cpf"
             type="text"
             inputmode="numeric"
-            maxlength="11"
+            maxlength="14"
             class="field-input"
-            placeholder="Somente números (11 dígitos)"
+            placeholder="000.000.000-00"
+            autocomplete="off"
           />
         </div>
+        <p class="privacy-note">
+          Seu CPF é validado no navegador e armazenado como hash, sem manter o documento em texto puro.
+        </p>
 
         <div class="bottom-actions">
           <button type="button" class="btn btn-secondary" data-go="screen-tela1">Voltar</button>
@@ -162,22 +161,29 @@
       <section id="screen-intervalo" class="screen">
         <h2 class="screen-title">Tempo de espera / intervalo</h2>
         <p class="screen-subtitle">
-          Digite apenas números. Esse valor será salvo como minutos no banco de dados.
+          Informe o tempo real que você aguardou na plataforma.
         </p>
 
-        <div class="form-grid">
-          <span class="field-label">Transporte</span>
-          <span id="lbl-int-transporte" class="readonly-value">-</span>
+        <div class="trip-summary" aria-label="Resumo da viagem selecionada">
+          <div class="info-chip">
+            <span class="chip-label">Transporte</span>
+            <strong id="lbl-int-transporte">-</strong>
+          </div>
+          <div class="info-chip">
+            <span class="chip-label">Linha</span>
+            <strong id="lbl-int-linha">-</strong>
+          </div>
+          <div class="info-chip">
+            <span class="chip-label">Estação</span>
+            <strong id="lbl-int-estacao">-</strong>
+          </div>
+          <div class="info-chip info-chip-reference">
+            <span class="chip-label">Referência média</span>
+            <strong id="lbl-int-estimativa">-</strong>
+          </div>
+        </div>
 
-          <span class="field-label">Linha</span>
-          <span id="lbl-int-linha" class="readonly-value">-</span>
-
-          <span class="field-label">Estação</span>
-          <span id="lbl-int-estacao" class="readonly-value">-</span>
-
-          <span class="field-label">Referência média</span>
-          <span id="lbl-int-estimativa" class="readonly-value">-</span>
-
+        <div class="interval-input-card">
           <label for="input-intervalo" class="field-label">Tempo em minutos</label>
           <div>
             <input
@@ -205,6 +211,12 @@
         <p class="screen-subtitle">
           Use o formato dd/mm/aaaa para data e hh:mm para hora. Para facilitar, os campos já vêm preenchidos com o momento atual.
         </p>
+
+        <div class="time-shortcuts" role="group" aria-label="Atalhos de horário da viagem">
+          <button id="btn-data-agora" type="button" class="btn btn-secondary">Agora</button>
+          <button id="btn-data-15-min" type="button" class="btn btn-secondary">Há 15 min</button>
+          <button id="btn-data-30-min" type="button" class="btn btn-secondary">Há 30 min</button>
+        </div>
 
         <div class="form-grid">
           <label for="input-data" class="field-label">Data</label>
@@ -236,7 +248,7 @@
       <section id="screen-avaliacao" class="screen">
         <h2 class="screen-title">Como foi sua experiência?</h2>
         <p class="screen-subtitle">
-          0 significa muito ruim e 5 significa excelente. Seja sincero: nota alta sem motivo não ajuda a melhorar nada.
+          Dê notas de 0 a 5 para ajudar a mapear os gargalos desta linha.
         </p>
 
         <div class="rating-grid">
@@ -294,7 +306,10 @@
 
       <!-- ETAPA 7: Tela_2.java -->
       <section id="screen-finalizacao" class="screen">
-        <div class="hero-icon small">✅</div>
+        <svg class="completion-icon" viewBox="0 0 64 64" role="img" aria-label="Avaliação pronta">
+          <circle cx="32" cy="32" r="30" fill="#84CC16" />
+          <path d="m18 33 9 9 19-20" fill="none" stroke="#06122A" stroke-linecap="round" stroke-linejoin="round" stroke-width="5" />
+        </svg>
         <h2 class="screen-title text-center">Obrigado pela participação</h2>
         <p class="screen-subtitle text-center">
           Sua avaliação será usada para entender os pontos críticos da viagem e sugerir melhorias no serviço.
@@ -309,13 +324,8 @@
             placeholder="Escreva aqui sua observação sobre a viagem (opcional)..."
           ></textarea>
 
-          <label for="resumo-avaliacao" class="field-label">Resumo da avaliação</label>
-          <textarea
-            id="resumo-avaliacao"
-            rows="9"
-            class="field-input resumo-box"
-            readonly
-          ></textarea>
+          <h3 class="field-label review-title">Revise sua avaliação</h3>
+          <div id="resumo-avaliacao" class="review-grid" aria-live="polite"></div>
         </div>
 
         <div class="bottom-actions">
@@ -326,10 +336,26 @@
 
       <!-- CONSULTA RÁPIDA DO TREM: Telaconsulta.java -->
       <section id="screen-consulta" class="screen">
-        <h2 class="screen-title">Tempo médio do trem</h2>
+        <h2 class="screen-title">Consulta rápida de transporte</h2>
         <p class="screen-subtitle">
-          Essa consulta não pede cadastro. Ela usa as avaliações salvas no banco e calcula a média do campo tempo em minutos.
+          Média colaborativa em tempo real baseada nos relatos recentes dos passageiros.
         </p>
+        <div class="query-filters">
+          <label class="filter-field" for="select-consulta-tipo">
+            <span class="field-label">Tipo de transporte</span>
+            <select id="select-consulta-tipo" class="field-input">
+              <option value="">Todos</option>
+              <option value="Metrô">Metrô</option>
+              <option value="Trem">Trem</option>
+            </select>
+          </label>
+          <label class="filter-field" for="select-consulta-linha">
+            <span class="field-label">Linha</span>
+            <select id="select-consulta-linha" class="field-input">
+              <option value="">Todas</option>
+            </select>
+          </label>
+        </div>
         <p id="consulta-resumo" class="field-label status-line">Carregando dados...</p>
 
         <div class="table-container">
@@ -395,6 +421,29 @@
         </p>
         <p id="admin-resumo" class="field-label status-line">Carregando dados...</p>
 
+        <div class="kpi-grid">
+          <article class="kpi-card">
+            <span class="kpi-label">Total de avaliações</span>
+            <strong id="kpi-total" class="kpi-value">—</strong>
+            <span class="kpi-caption">relatos registrados</span>
+          </article>
+          <article class="kpi-card">
+            <span class="kpi-label">Nota média geral</span>
+            <strong id="kpi-nota" class="kpi-value">—</strong>
+            <span class="kpi-caption">de 5 pontos</span>
+          </article>
+          <article class="kpi-card">
+            <span class="kpi-label">Espera média geral</span>
+            <strong id="kpi-espera" class="kpi-value">—</strong>
+            <span class="kpi-caption">minutos</span>
+          </article>
+          <article class="kpi-card kpi-card-critical">
+            <span class="kpi-label">Linha mais crítica</span>
+            <strong id="kpi-linha-critica" class="kpi-value">—</strong>
+            <span id="kpi-linha-detalhe" class="kpi-caption">Menor nota média; desempate por maior espera</span>
+          </article>
+        </div>
+
         <div class="table-container">
           <table class="data-table">
             <thead>
@@ -424,6 +473,11 @@
         </div>
       </section>
     </main>
+    <footer class="app-footer">
+      <button id="btn-abrir-admin-login" type="button" class="footer-admin-link">
+        Área do administrador
+      </button>
+    </footer>
   </div>
 
   <!-- Modal / Aviso equivalente ao JOptionPane -->

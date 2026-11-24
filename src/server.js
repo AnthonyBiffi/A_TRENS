@@ -2,6 +2,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 
@@ -21,6 +22,49 @@ const PORT = Number(process.env.PORT) || 3000;
 // Credenciais oficiais de Telaadminlogin.java
 const EMAIL_ADMIN = 'admin@saojudas.com';
 const SENHA_ADMIN = '12345678';
+const DURACAO_SESSAO_ADMIN_MS = 8 * 60 * 60 * 1000;
+const sessoesAdmin = new Map();
+
+function criarTokenAdmin() {
+  const agora = Date.now();
+  for (const [token, expiracao] of sessoesAdmin) {
+    if (expiracao <= agora) {
+      sessoesAdmin.delete(token);
+    }
+  }
+
+  const token = randomBytes(24).toString('hex');
+  sessoesAdmin.set(token, agora + DURACAO_SESSAO_ADMIN_MS);
+  return token;
+}
+
+function tokenAdminValido(token) {
+  const expiracao = sessoesAdmin.get(token);
+  if (!expiracao || expiracao <= Date.now()) {
+    sessoesAdmin.delete(token);
+    return false;
+  }
+  return true;
+}
+
+function exigirTokenAdminHeader(req, res, next) {
+  res.set('Cache-Control', 'no-store');
+  const match = /^Bearer ([a-f0-9]{48})$/i.exec(req.get('authorization') || '');
+  if (!match || !tokenAdminValido(match[1])) {
+    return res.status(401).json({ erro: 'Sessão administrativa inválida ou expirada.' });
+  }
+  req.adminToken = match[1];
+  next();
+}
+
+function exigirTokenAdminQuery(req, res, next) {
+  res.set('Cache-Control', 'no-store');
+  const token = typeof req.query.token === 'string' ? req.query.token : '';
+  if (!/^[a-f0-9]{48}$/i.test(token) || !tokenAdminValido(token)) {
+    return res.status(401).json({ erro: 'Sessão administrativa inválida ou expirada.' });
+  }
+  next();
+}
 
 app.use(cors());
 app.use(express.json());
@@ -60,9 +104,16 @@ app.post('/api/avaliacoes', async (req, res) => {
 });
 
 // Consulta rápida do trem (Telaconsulta.java -> AvaliacaoDAO.consultarIntervaloTremUltimaHora)
-app.get('/api/consulta-trem', async (_req, res) => {
+app.get('/api/consulta-trem', async (req, res) => {
   try {
-    const resultado = await AvaliacaoDAO.consultarIntervaloTremUltimaHora();
+    const tipoTransporte = typeof req.query.tipoTransporte === 'string'
+      ? req.query.tipoTransporte
+      : '';
+    const linha = typeof req.query.linha === 'string' ? req.query.linha : '';
+    const resultado = await AvaliacaoDAO.consultarIntervaloTremUltimaHora({
+      tipoTransporte,
+      linha
+    });
     res.json(resultado);
   } catch (err) {
     res.status(500).json({
@@ -77,7 +128,12 @@ app.post('/api/admin/login', (req, res) => {
   const senha = String(req.body?.senha || '');
 
   if (email.toLowerCase() === EMAIL_ADMIN && senha === SENHA_ADMIN) {
-    return res.json({ autenticado: true, email: EMAIL_ADMIN });
+    res.set('Cache-Control', 'no-store');
+    return res.json({
+      autenticado: true,
+      email: EMAIL_ADMIN,
+      token: criarTokenAdmin()
+    });
   }
 
   return res.status(401).json({
@@ -86,8 +142,13 @@ app.post('/api/admin/login', (req, res) => {
   });
 });
 
+app.post('/api/admin/logout', exigirTokenAdminHeader, (req, res) => {
+  sessoesAdmin.delete(req.adminToken);
+  res.status(204).end();
+});
+
 // Dashboard consolidado do administrador (Telaadmin.java)
-app.get('/api/admin/dashboard', async (_req, res) => {
+app.get('/api/admin/dashboard', exigirTokenAdminHeader, async (_req, res) => {
   try {
     const dados = await AvaliacaoDAO.consultarResumoDashboard();
     res.json({ dados });
@@ -99,7 +160,7 @@ app.get('/api/admin/dashboard', async (_req, res) => {
 });
 
 // Exportação CSV do dashboard (ExportadorDashboard.java)
-app.get('/api/admin/exportar-csv', async (_req, res) => {
+app.get('/api/admin/exportar-csv', exigirTokenAdminQuery, async (_req, res) => {
   try {
     const { nomeArquivo, conteudo } = await AvaliacaoDAO.gerarCsvDashboard();
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');

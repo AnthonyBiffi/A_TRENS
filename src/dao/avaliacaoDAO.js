@@ -1,6 +1,7 @@
 // Equivalente a AvaliacaoDAO.java + ExportadorDashboard.java usando Supabase
 import fs from 'fs';
 import path from 'path';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'url';
 import { supabase } from '../config/supabase.js';
 
@@ -68,21 +69,6 @@ function formatarDataHoraArquivo(date = new Date()) {
   return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}_${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
 }
 
-function ehLinhaTrem(tipoTransporte, linha) {
-  const t = limparTexto(tipoTransporte).toLowerCase();
-  const l = limparTexto(linha).toLowerCase();
-  return (
-    t.includes('trem') ||
-    l.includes('rubi') ||
-    l.includes('diamante') ||
-    l.includes('esmeralda') ||
-    l.includes('turquesa') ||
-    l.includes('coral') ||
-    l.includes('safira') ||
-    l.includes('jade')
-  );
-}
-
 export const AvaliacaoDAO = {
   async salvarAvaliacao({
     nome,
@@ -100,10 +86,15 @@ export const AvaliacaoDAO = {
   }) {
     const dataIso = converterDataParaISO(dataViagem);
     const horaSql = converterHoraParaSQL(horaViagem);
+    const cpfApenasDigitos = limparTexto(cpf).replace(/\D/g, '');
+    const cpfAnonimizado = createHash('sha256')
+      .update(cpfApenasDigitos)
+      .digest('hex')
+      .slice(0, 20);
 
     const payload = {
       nome: limparTexto(nome),
-      cpf: limparTexto(cpf),
+      cpf: cpfAnonimizado,
       tipo_transporte: limparTexto(tipoTransporte),
       linha: limparTexto(linha),
       estacao: limparTexto(estacao),
@@ -139,18 +130,23 @@ export const AvaliacaoDAO = {
     return { origem: 'fallback-local', ...novo };
   },
 
-  async consultarIntervaloTremUltimaHora() {
+  async consultarIntervaloTremUltimaHora({ tipoTransporte = '', linha = '' } = {}) {
+    const tipoFiltro = limparTexto(tipoTransporte);
+    const linhaFiltro = limparTexto(linha);
     let registros = [];
 
     if (supabase) {
-      // Busca registros com intervalo_medio_minutos > 0 e filtra linhas de trem
-      const { data, error } = await supabase
+      let query = supabase
         .from('avaliacoes')
         .select('tipo_transporte, linha, estacao, intervalo_medio_minutos, criado_em')
         .not('intervalo_medio_minutos', 'is', null)
         .gt('intervalo_medio_minutos', 0)
         .order('criado_em', { ascending: false });
 
+      if (tipoFiltro) query = query.eq('tipo_transporte', tipoFiltro);
+      if (linhaFiltro) query = query.eq('linha', linhaFiltro);
+
+      const { data, error } = await query;
       if (error) {
         throw new Error(`Erro Supabase: ${error.message}`);
       }
@@ -159,19 +155,26 @@ export const AvaliacaoDAO = {
       registros = lerFallback().filter(
         (r) => r.intervalo_medio_minutos != null && Number(r.intervalo_medio_minutos) > 0
       );
+      if (tipoFiltro) {
+        registros = registros.filter(
+          (r) => limparTexto(r.tipo_transporte).toLocaleLowerCase() === tipoFiltro.toLocaleLowerCase()
+        );
+      }
+      if (linhaFiltro) {
+        registros = registros.filter(
+          (r) => limparTexto(r.linha).toLocaleLowerCase() === linhaFiltro.toLocaleLowerCase()
+        );
+      }
     }
-
-    const apenasTrem = registros.filter((r) => ehLinhaTrem(r.tipo_transporte, r.linha));
 
     const agora = Date.now();
     const umaHoraMs = 60 * 60 * 1000;
-    const daUltimaHora = apenasTrem.filter((r) => {
+    const daUltimaHora = registros.filter((r) => {
       const ts = Date.parse(String(r.criado_em));
-      return !Number.isNaN(ts) && agora - ts <= umaHoraMs;
+      return !Number.isNaN(ts) && ts <= agora && agora - ts <= umaHoraMs;
     });
 
-    // Mesma regra de AvaliacaoDAO.java: tenta última hora; se vazio, usa histórico completo de trem
-    const base = daUltimaHora.length > 0 ? daUltimaHora : apenasTrem;
+    const base = daUltimaHora.length > 0 ? daUltimaHora : registros;
     const escopo = daUltimaHora.length > 0 ? 'ultima_hora' : 'historico_geral';
 
     const grupos = new Map();
@@ -258,6 +261,7 @@ export const AvaliacaoDAO = {
         linha: g.linha,
         estacao: g.estacao,
         mediaIntervalo: g.qtdIntervalo ? g.somaIntervalo / g.qtdIntervalo : 0,
+        quantidadeIntervalos: g.qtdIntervalo,
         mediaEspera: g.somaEspera / g.quantidadeAvaliacoes,
         mediaLotacao: g.somaLotacao / g.quantidadeAvaliacoes,
         mediaQualidade: g.somaQualidade / g.quantidadeAvaliacoes,
