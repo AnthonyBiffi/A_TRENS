@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pesquisa de Satisfação - Transporte Público (A3)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-root">
+    <header class="app-header">
+      <div class="header-left">
+        <img
+          class="header-logo"
+          src="assets/logo-a3-simbolo.png"
+          alt="A3 Mobilidade"
+          width="1114"
+          height="462"
+        />
+        <div>
+          <h1 class="brand-title">Pesquisa de Satisfação - Transporte Público</h1>
+          <p id="header-subtitle" class="brand-subtitle">
+            Pesquisa rápida para entender a experiência dos passageiros.
+          </p>
+        </div>
+      </div>
+      <div class="header-right">
+        <span id="db-status-badge" class="db-badge">Verificando Supabase...</span>
+        <div
+          id="header-progress"
+          class="progress-panel"
+          role="group"
+          aria-label="Progresso da avaliação"
+        >
+          <div class="progress-meta">
+            <span id="header-step" class="step-badge" aria-live="polite">Etapa 1 de 7</span>
+            <span id="progress-value" class="progress-value">14%</span>
+          </div>
+          <div
+            id="progress-track"
+            class="progress-track"
+            role="progressbar"
+            aria-label="Etapas concluídas"
+            aria-valuemin="0"
+            aria-valuemax="7"
+            aria-valuenow="1"
+          >
+            <span id="progress-fill" class="progress-fill"></span>
+          </div>
+        </div>
+        <button id="btn-toggle-theme" type="button" class="btn btn-secondary theme-toggle" aria-label="Ativar tema claro">
+          <span class="theme-icon" aria-hidden="true">☀</span>
+          <span class="theme-label">Tema claro</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="app-card" data-layout="form">
+      <!-- ETAPA 1: Tela_1.java -->
+      <section id="screen-tela1" class="screen active center-stack">
+        <p class="hero-badge"><span aria-hidden="true">⚡</span> Inteligência em transporte público <span class="badge-divider">•</span> Dados em tempo real</p>
+        <img
+          id="hero-logo"
+          class="hero-logo"
+          src="assets/logo-a3-mobilidade.png"
+          alt="A3 Mobilidade — Pesquisa e Inteligência no Transporte"
+          width="1154"
+          height="726"
+        />
+        <h2 class="screen-title text-center">Avalie sua viagem</h2>
+        <p class="screen-subtitle text-center">
+          Sua opinião ajuda a identificar problemas de espera, lotação, conforto e qualidade do serviço.
+          O questionário é simples, direto e leva menos de um minuto.
+        </p>
+        <div class="vertical-actions">
+          <button id="btn-iniciar-avaliacao" type="button" class="btn btn-primary">
+            Iniciar avaliação
+          </button>
+          <button id="btn-abrir-consulta" type="button" class="btn btn-secondary">
+            Consulta rápida do trem
+          </button>
+          <button id="btn-abrir-admin-login" type="button" class="btn btn-secondary">
+            Área do administrador
+          </button>
+        </div>
+        <p class="muted-note text-center">
+          A área do administrador é bloqueada para usuários.
+        </p>
+      </section>
+
+      <!-- ETAPA 2: Telalogin.java -->
+      <section id="screen-login" class="screen">
+        <h2 class="screen-title">Dados do passageiro</h2>
+        <p class="screen-subtitle">
+          Preencha nome e CPF. O CPF aceita somente números.
+        </p>
+
+        <div class="form-grid">
+          <label for="input-nome" class="field-label">Nome</label>
+          <input
+            id="input-nome"
+            type="text"
+            class="field-input"
+            placeholder="Digite seu nome completo"
+            autocomplete="name"
+          />
+
+          <label for="input-cpf" class="field-label">CPF</label>
+          <input
+            id="input-cpf"
+            type="text"
+            inputmode="numeric"
+            maxlength="11"
+            class="field-input"
+            placeholder="Somente números (11 dígitos)"
+          />
+        </div>
+
+        <div class="bottom-actions">
+          <button type="button" class="btn btn-secondary" data-go="screen-tela1">Voltar</button>
+          <button id="btn-login-continuar" type="button" class="btn btn-primary">Continuar</button>
+        </div>
+      </section>
+
+      <!-- ETAPA 3: Telalocal.java -->
+      <section id="screen-local" class="screen">
+        <h2 class="screen-title">Onde foi sua viagem?</h2>
+        <p class="screen-subtitle">
+          As opções mudam automaticamente de acordo com o tipo de transporte escolhido.
+        </p>
+
+        <div class="form-grid">
+          <label for="select-tipo" class="field-label">Tipo de transporte</label>
+          <select id="select-tipo" class="field-input">
+            <option value="Selecione">Selecione</option>
+          </select>
+
+          <label for="select-linha" class="field-label">Linha</label>
+          <select id="select-linha" class="field-input">
+            <option value="Selecione">Selecione</option>
+          </select>
+
+          <label for="select-estacao" class="field-label">Estação</label>
+          <select id="select-estacao" class="field-input">
+            <option value="Selecione">Selecione</option>
+          </select>
+        </div>
+
+        <div class="bottom-actions">
+          <button type="button" class="btn btn-secondary" data-go="screen-login">Voltar</button>
+          <button id="btn-local-continuar" type="button" class="btn btn-primary">Continuar</button>
+        </div>
+      </section>
+
+      <!-- ETAPA 4: Telaintervalo.java -->
+      <section id="screen-intervalo" class="screen">
+        <h2 class="screen-title">Tempo de espera / intervalo</h2>
+        <p class="screen-subtitle">
+          Digite apenas números. Esse valor será salvo como minutos no banco de dados.
+        </p>
+
+        <div class="form-grid">
+          <span class="field-label">Transporte</span>
+          <span id="lbl-int-transporte" class="readonly-value">-</span>
+
+          <span class="field-label">Linha</span>
+          <span id="lbl-int-linha" class="readonly-value">-</span>
+
+          <span class="field-label">Estação</span>
+          <span id="lbl-int-estacao" class="readonly-value">-</span>
+
+          <span class="field-label">Referência média</span>
+          <span id="lbl-int-estimativa" class="readonly-value">-</span>
+
+          <label for="input-intervalo" class="field-label">Tempo em minutos</label>
+          <div>
+            <input
+              id="input-intervalo"
+              type="text"
+              inputmode="numeric"
+              class="field-input"
+              placeholder="Exemplo: 8"
+            />
+            <p class="field-hint">
+              Exemplo: se o trem demora cerca de 10 minutos para passar, digite 10.
+            </p>
+          </div>
+        </div>
+
+        <div class="bottom-actions">
+          <button type="button" class="btn btn-secondary" data-go="screen-local">Voltar</button>
+          <button id="btn-intervalo-continuar" type="button" class="btn btn-primary">Continuar</button>
+        </div>
+      </section>
+
+      <!-- ETAPA 5: Teladata.java -->
+      <section id="screen-data" class="screen">
+        <h2 class="screen-title">Quando foi sua viagem?</h2>
+        <p class="screen-subtitle">
+          Use o formato dd/mm/aaaa para data e hh:mm para hora. Para facilitar, os campos já vêm preenchidos com o momento atual.
+        </p>
+
+        <div class="form-grid">
+          <label for="input-data" class="field-label">Data</label>
+          <input
+            id="input-data"
+            type="text"
+            maxlength="10"
+            class="field-input"
+            placeholder="dd/mm/aaaa"
+          />
+
+          <label for="input-hora" class="field-label">Hora</label>
+          <input
+            id="input-hora"
+            type="text"
+            maxlength="5"
+            class="field-input"
+            placeholder="hh:mm"
+          />
+        </div>
+
+        <div class="bottom-actions">
+          <button type="button" class="btn btn-secondary" data-go="screen-intervalo">Voltar</button>
+          <button id="btn-data-continuar" type="button" class="btn btn-primary">Continuar</button>
+        </div>
+      </section>
+
+      <!-- ETAPA 6: Telaavaliacao.java -->
+      <section id="screen-avaliacao" class="screen">
+        <h2 class="screen-title">Como foi sua experiência?</h2>
+        <p class="screen-subtitle">
+          0 significa muito ruim e 5 significa excelente. Seja sincero: nota alta sem motivo não ajuda a melhorar nada.
+        </p>
+
+        <div class="rating-grid">
+          <article class="rating-card">
+            <div class="rating-heading">
+              <label for="slider-espera" class="field-label">
+                Tempo de espera <span class="rating-score"><strong id="val-espera">3</strong>/5</span>
+              </label>
+              <span id="status-espera" class="rating-status" data-level="regular">Regular</span>
+            </div>
+            <div class="slider-wrap">
+              <input id="slider-espera" class="rating-slider" type="range" min="0" max="5" step="1" value="3" aria-valuetext="3 de 5, Regular" />
+              <div class="slider-ticks" aria-hidden="true">
+                <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+              </div>
+            </div>
+          </article>
+          <article class="rating-card">
+            <div class="rating-heading">
+              <label for="slider-lotacao" class="field-label">
+                Lotação do transporte <span class="rating-score"><strong id="val-lotacao">3</strong>/5</span>
+              </label>
+              <span id="status-lotacao" class="rating-status" data-level="regular">Regular</span>
+            </div>
+            <div class="slider-wrap">
+              <input id="slider-lotacao" class="rating-slider" type="range" min="0" max="5" step="1" value="3" aria-valuetext="3 de 5, Regular" />
+              <div class="slider-ticks" aria-hidden="true">
+                <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+              </div>
+            </div>
+          </article>
+          <article class="rating-card">
+            <div class="rating-heading">
+              <label for="slider-qualidade" class="field-label">
+                Qualidade geral do serviço <span class="rating-score"><strong id="val-qualidade">3</strong>/5</span>
+              </label>
+              <span id="status-qualidade" class="rating-status" data-level="regular">Regular</span>
+            </div>
+            <div class="slider-wrap">
+              <input id="slider-qualidade" class="rating-slider" type="range" min="0" max="5" step="1" value="3" aria-valuetext="3 de 5, Regular" />
+              <div class="slider-ticks" aria-hidden="true">
+                <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="bottom-actions">
+          <button type="button" class="btn btn-secondary" data-go="screen-data">Voltar</button>
+          <button id="btn-avaliacao-continuar" type="button" class="btn btn-primary">
+            Finalizar avaliação
+          </button>
+        </div>
+      </section>
+
+      <!-- ETAPA 7: Tela_2.java -->
+      <section id="screen-finalizacao" class="screen">
+        <div class="hero-icon small">✅</div>
+        <h2 class="screen-title text-center">Obrigado pela participação</h2>
+        <p class="screen-subtitle text-center">
+          Sua avaliação será usada para entender os pontos críticos da viagem e sugerir melhorias no serviço.
+        </p>
+
+        <div class="stack-fields">
+          <label for="input-comentario" class="field-label">Comentário opcional</label>
+          <textarea
+            id="input-comentario"
+            rows="4"
+            class="field-input"
+            placeholder="Escreva aqui sua observação sobre a viagem (opcional)..."
+          ></textarea>
+
+          <label for="resumo-avaliacao" class="field-label">Resumo da avaliação</label>
+          <textarea
+            id="resumo-avaliacao"
+            rows="9"
+            class="field-input resumo-box"
+            readonly
+          ></textarea>
+        </div>
+
+        <div class="bottom-actions">
+          <button type="button" class="btn btn-secondary" data-go="screen-avaliacao">Voltar</button>
+          <button id="btn-concluir" type="button" class="btn btn-primary">Concluir</button>
+        </div>
+      </section>
+
+      <!-- CONSULTA RÁPIDA DO TREM: Telaconsulta.java -->
+      <section id="screen-consulta" class="screen">
+        <h2 class="screen-title">Tempo médio do trem</h2>
+        <p class="screen-subtitle">
+          Essa consulta não pede cadastro. Ela usa as avaliações salvas no banco e calcula a média do campo tempo em minutos.
+        </p>
+        <p id="consulta-resumo" class="field-label status-line">Carregando dados...</p>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Transporte</th>
+                <th>Linha</th>
+                <th>Estação</th>
+                <th>Média intervalo</th>
+                <th>Avaliações</th>
+                <th>Última avaliação</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-consulta"></tbody>
+          </table>
+        </div>
+
+        <div class="bottom-actions">
+          <button type="button" class="btn btn-secondary" data-go="screen-tela1">Voltar</button>
+          <button id="btn-atualizar-consulta" type="button" class="btn btn-secondary">
+            Atualizar consulta
+          </button>
+        </div>
+      </section>
+
+      <!-- LOGIN ADMINISTRADOR: Telaadminlogin.java -->
+      <section id="screen-admin-login" class="screen">
+        <h2 class="screen-title text-center">Área do administrador</h2>
+        <p class="screen-subtitle text-center">
+          Entre com o email e senha do administrador. Usuário comum não precisa passar por essa tela.
+        </p>
+
+        <div class="form-grid">
+          <label for="input-admin-email" class="field-label">Email</label>
+          <input
+            id="input-admin-email"
+            type="email"
+            class="field-input"
+            placeholder="admin@saojudas.com"
+          />
+
+          <label for="input-admin-senha" class="field-label">Senha</label>
+          <input
+            id="input-admin-senha"
+            type="password"
+            class="field-input"
+            placeholder="Senha do administrador"
+          />
+        </div>
+
+        <div class="bottom-actions">
+          <button type="button" class="btn btn-secondary" data-go="screen-tela1">Voltar</button>
+          <button id="btn-admin-entrar" type="button" class="btn btn-primary">Entrar</button>
+        </div>
+      </section>
+
+      <!-- DASHBOARD ADMIN: Telaadmin.java + ExportadorDashboard.java -->
+      <section id="screen-admin-dashboard" class="screen">
+        <h2 class="screen-title">Resumo das avaliações</h2>
+        <p class="screen-subtitle">
+          Essa tela é somente para administrador. Aqui fica a exportação do dashboard.
+        </p>
+        <p id="admin-resumo" class="field-label status-line">Carregando dados...</p>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Transporte</th>
+                <th>Linha</th>
+                <th>Estação</th>
+                <th>Média intervalo</th>
+                <th>Nota espera</th>
+                <th>Lotação</th>
+                <th>Qualidade</th>
+                <th>Avaliações</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-admin"></tbody>
+          </table>
+        </div>
+
+        <div class="bottom-actions">
+          <button id="btn-admin-sair" type="button" class="btn btn-secondary">Sair do admin</button>
+          <button id="btn-admin-atualizar" type="button" class="btn btn-secondary">
+            Atualizar dados
+          </button>
+          <button id="btn-admin-exportar" type="button" class="btn btn-primary">
+            Exportar dashboard Excel
+          </button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal / Aviso equivalente ao JOptionPane -->
+  <div id="dialog-backdrop" class="dialog-backdrop hidden">
+    <div class="dialog-box">
+      <h3 id="dialog-title">Atenção</h3>
+      <p id="dialog-message"></p>
+      <div class="dialog-actions">
+        <button id="dialog-ok" type="button" class="btn btn-primary">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
